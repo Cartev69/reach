@@ -59,7 +59,7 @@ function LessonPage({ lesson, onNext, onBack, isFirst, isLast }) {
   /* render lesson page with navigation and content */
   return (
     <div className="lesson-container">
-      <h2>{lesson ? lesson.header : 'lesson'}</h2>
+      <h2>{lesson ? <><i className={lesson.icon}></i> {lesson.header}</> : 'lesson'}</h2>
       <div className="lesson-content-box">
         {isLoading && <div className="spinner-container"><div className="spinner"></div></div>}
         {error && <div className="error">{error}</div>}
