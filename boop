@@ -1,0 +1,52 @@
+app.post('/api/generateSlide', async (req, res) => {
+  try {
+    const { topic, slideIndex } = req.body;
+    if (!topic || slideIndex === undefined) {
+      return res.status(400).json({ error: "Topic and slideIndex are required" });
+    }
+
+    // Check if we have a cached response for this specific slide
+    const cacheKey = `lesson-${topic}-${slideIndex}`;
+    const cachedResponse = responseCache.get(cacheKey);
+    if (cachedResponse) {
+      console.log(`Using cached slide ${slideIndex} for "${topic}"`);
+      return res.json({ slide: cachedResponse });
+    }
+
+    const startTime = performance.now();
+    const chain = await createRetrievalChainForTopic(topic);
+    
+    const prompts = [
+      `Write a brief introduction to the module ${topic} without including the module title, as short as possible.`,
+      `Write the basic info a caregiver should know from the module ${topic}. Make it concise, in 4 sentences, numbering each thought.`,
+      `List 2 common issues and solutions involving the module ${topic}. Number them and limit the response to 4 sentences.`,
+      `Briefly explain, at a 6th-grade reading level, 4 unique approaches to common problems in the ${topic} module. Number each approach and keep each explanation to one sentence.`
+    ];
+
+    if (slideIndex >= prompts.length) {
+      return res.status(400).json({ error: "Invalid slide index" });
+    }
+
+    const prompt = prompts[slideIndex];
+    console.log(`\nGenerating slide ${slideIndex + 1} for "${topic}"...`);
+    
+    const promptTime = performance.now();
+    const result = await chain.invoke({
+      input: prompt
+    });
+    console.log(`Slide ${slideIndex + 1} generation time: ${((performance.now() - promptTime) / 1000).toFixed(2)}s`);
+
+    // Cache the individual slide response
+    responseCache.set(cacheKey, result.answer);
+    return res.json({ 
+      slide: result.answer,
+      totalSlides: prompts.length 
+    });
+    
+  } catch (error) {
+    console.error("Error:", error.message);
+    return res.status(500).json(
+      { error: "An error occurred while generating the slide content." }
+    );
+  }
+});
